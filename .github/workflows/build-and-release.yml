@@ -115,40 +115,38 @@ jobs:
           path: artifacts/*
           if-no-files-found: error
 
-  tag:
+  publish:
     if: >-
-      github.ref == 'refs/heads/main' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch'))
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      - name: Create version tag if missing
+      - name: Prepare release tag
         env:
           GH_TOKEN: ${{ github.token }}
           PLUGIN_VERSION: ${{ needs.build.outputs.plugin_version }}
         run: |
-          tag="v$PLUGIN_VERSION"
-          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
-            echo "Tag $tag already exists; leaving it unchanged."
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            tag="$GITHUB_REF_NAME"
           else
-            gh api "repos/$GITHUB_REPOSITORY/git/refs" \
-              --method POST \
-              -f ref="refs/tags/$tag" \
-              -f sha="$GITHUB_SHA"
-            echo "Created tag $tag at $GITHUB_SHA."
+            tag="v$PLUGIN_VERSION"
+            if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
+              echo "Tag $tag already exists; leaving it unchanged."
+            else
+              gh api "repos/$GITHUB_REPOSITORY/git/refs" \
+                --method POST \
+                -f ref="refs/tags/$tag" \
+                -f sha="$GITHUB_SHA"
+              echo "Created tag $tag at $GITHUB_SHA."
+            fi
           fi
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
 
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
@@ -159,12 +157,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" artifacts/* --clobber
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" artifacts/* --clobber
           else
-            gh release create "$GITHUB_REF_NAME" artifacts/* \
+            gh release create "$RELEASE_TAG" artifacts/* \
               --verify-tag \
               --generate-notes \
-              --title "FixDeepSeaTransfer $GITHUB_REF_NAME"
+              --title "FixDeepSeaTransfer $RELEASE_TAG"
           fi
 
