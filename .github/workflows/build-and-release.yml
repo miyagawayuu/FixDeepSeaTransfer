@@ -157,10 +157,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" artifacts/* --clobber
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" artifacts/* --clobber --repo "$GITHUB_REPOSITORY"
           else
             gh release create "$RELEASE_TAG" artifacts/* \
+              --repo "$GITHUB_REPOSITORY" \
               --verify-tag \
               --generate-notes \
               --title "FixDeepSeaTransfer $RELEASE_TAG"
