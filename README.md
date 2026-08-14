@@ -52,13 +52,16 @@ project as the single source file in `src/FixDeepSeaTransfer`.
 
 ## Releases
 
-Every pull request and push to `main` runs a Release configuration build. Pushing
-a tag such as `v0.1.1` also creates a GitHub Release containing:
+Every pull request and push to `main` runs a Release configuration build. After a
+successful `main` build, GitHub Actions creates the version tag from the plugin's
+`Info` attribute if that tag does not exist. The tag build then creates a GitHub
+Release containing:
 
 - `FixDeepSeaTransfer.cs`
 - `SHA256SUMS.txt`
 
-The tag version must match the version in the plugin's `Info` attribute.
+Existing tags are never moved. Increment the version in the plugin's `Info`
+attribute before publishing a new release.
 
 ## Privacy
 
