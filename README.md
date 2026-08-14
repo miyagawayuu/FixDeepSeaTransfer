@@ -54,7 +54,7 @@ project as the single source file in `src/FixDeepSeaTransfer`.
 
 Every pull request and push to `main` runs a Release configuration build. After a
 successful `main` build, GitHub Actions creates the version tag from the plugin's
-`Info` attribute if that tag does not exist. The tag build then creates a GitHub
+`Info` attribute if that tag does not exist, then creates or updates a GitHub
 Release containing:
 
 - `FixDeepSeaTransfer.cs`
