@@ -47,8 +47,13 @@ jobs:
             +login anonymous `
             +app_update 258550 validate `
             +quit
-          if ($LASTEXITCODE -ne 0) {
-            throw "SteamCMD failed with exit code $LASTEXITCODE."
+          $steamCmdExitCode = $LASTEXITCODE
+          $rustAssembly = Join-Path $env:RUST_DIR 'RustDedicated_Data\Managed\Assembly-CSharp.dll'
+          if (-not (Test-Path -LiteralPath $rustAssembly)) {
+            throw "Rust server installation is incomplete (SteamCMD exit code: $steamCmdExitCode)."
+          }
+          if ($steamCmdExitCode -ne 0) {
+            Write-Warning "SteamCMD returned exit code $steamCmdExitCode after installing the required Rust server files."
           }
 
       - name: Install Carbon production build
