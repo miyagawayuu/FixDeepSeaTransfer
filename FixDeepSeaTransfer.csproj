@@ -1,0 +1,93 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <Version>0.1.1</Version>
+    <AssemblyName>FixDeepSeaTransfer</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    <DefineConstants>CARBON</DefineConstants>
+    <RustDir Condition="'$(RustDir)' == ''">$(RUSTDIR)</RustDir>
+    <ManagedDir>$(RustDir)\RustDedicated_Data\Managed</ManagedDir>
+    <CarbonManagedDir>$(RustDir)\carbon\managed</CarbonManagedDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="src\FixDeepSeaTransfer\*.cs" />
+    <Compile Include="local\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(ManagedDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(ManagedDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Rust.Harmony">
+      <HintPath>$(ManagedDir)\Rust.Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Rust.Data">
+      <HintPath>$(ManagedDir)\Rust.Data.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Facepunch.System">
+      <HintPath>$(ManagedDir)\Facepunch.System.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Facepunch.Console">
+      <HintPath>$(ManagedDir)\Facepunch.Console.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Facepunch.Network">
+      <HintPath>$(ManagedDir)\Facepunch.Network.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Facepunch.UnityEngine">
+      <HintPath>$(ManagedDir)\Facepunch.UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Carbon">
+      <HintPath>$(CarbonManagedDir)\Carbon.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Carbon.Common">
+      <HintPath>$(CarbonManagedDir)\Carbon.Common.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Carbon.Compat">
+      <HintPath>$(CarbonManagedDir)\Carbon.Compat.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Carbon.SDK">
+      <HintPath>$(CarbonManagedDir)\Carbon.SDK.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="ValidateRustDir" BeforeTargets="ResolveAssemblyReferences" Condition="'$(RustDir)' == ''">
+    <Error Text="Specify RustDir. Example: dotnet build -p:RustDir=C:\path\to\rustserver" />
+  </Target>
+
+  <Target Name="ValidateRustReferences" BeforeTargets="ResolveAssemblyReferences" Condition="'$(RustDir)' != ''">
+    <Error Condition="!Exists('$(ManagedDir)\Assembly-CSharp.dll')" Text="Rust server assemblies were not found under $(ManagedDir). Install or update Rust Dedicated Server first." />
+    <Error Condition="!Exists('$(CarbonManagedDir)\Carbon.dll')" Text="Carbon assemblies were not found under $(CarbonManagedDir). Install Carbon into the Rust server directory first." />
+  </Target>
+</Project>
+
