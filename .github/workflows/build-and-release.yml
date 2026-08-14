@@ -1,0 +1,128 @@
+name: Build and release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure dependency paths
+        shell: pwsh
+        run: |
+          "RUST_DIR=$env:RUNNER_TEMP\rust-server" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "STEAMCMD_DIR=$env:RUNNER_TEMP\steamcmd" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install Rust Dedicated Server
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $steamCmdArchive = Join-Path $env:RUNNER_TEMP 'steamcmd.zip'
+          New-Item -ItemType Directory -Force -Path $env:STEAMCMD_DIR | Out-Null
+          Invoke-WebRequest `
+            -Uri 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip' `
+            -OutFile $steamCmdArchive
+          Expand-Archive -LiteralPath $steamCmdArchive -DestinationPath $env:STEAMCMD_DIR -Force
+          & (Join-Path $env:STEAMCMD_DIR 'steamcmd.exe') `
+            +force_install_dir $env:RUST_DIR `
+            +login anonymous `
+            +app_update 258550 validate `
+            +quit
+          if ($LASTEXITCODE -ne 0) {
+            throw "SteamCMD failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Install Carbon production build
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $carbonArchive = Join-Path $env:RUNNER_TEMP 'Carbon.Windows.Release.zip'
+          Invoke-WebRequest `
+            -Uri 'https://github.com/CarbonCommunity/Carbon/releases/download/production_build/Carbon.Windows.Release.zip' `
+            -OutFile $carbonArchive
+          Expand-Archive -LiteralPath $carbonArchive -DestinationPath $env:RUST_DIR -Force
+
+      - name: Validate tag version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $source = Get-Content -Raw 'src/FixDeepSeaTransfer/FixDeepSeaTransfer.cs'
+          if ($source -notmatch '\[Info\("FixDeepSeaTransfer",\s*"[^"]+",\s*"([^"]+)"\)\]') {
+            throw 'Could not read the plugin version from the Info attribute.'
+          }
+          $pluginVersion = $Matches[1]
+          $tagVersion = $env:GITHUB_REF_NAME -replace '^v', ''
+          if ($pluginVersion -ne $tagVersion) {
+            throw "Tag version $tagVersion does not match plugin version $pluginVersion."
+          }
+
+      - name: Restore dependencies
+        run: dotnet restore .\FixDeepSeaTransfer.csproj
+
+      - name: Build Release configuration
+        run: dotnet build .\FixDeepSeaTransfer.csproj --configuration Release --no-restore -p:RustDir="$env:RUST_DIR"
+
+      - name: Prepare release artifact
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path 'artifacts' | Out-Null
+          Copy-Item `
+            -LiteralPath 'src/FixDeepSeaTransfer/FixDeepSeaTransfer.cs' `
+            -Destination 'artifacts/FixDeepSeaTransfer.cs'
+          $hash = (Get-FileHash -Algorithm SHA256 'artifacts/FixDeepSeaTransfer.cs').Hash.ToLowerInvariant()
+          "$hash  FixDeepSeaTransfer.cs" | Set-Content -Encoding ascii 'artifacts/SHA256SUMS.txt'
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FixDeepSeaTransfer-${{ github.sha }}
+          path: artifacts/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: FixDeepSeaTransfer-${{ github.sha }}
+          path: artifacts
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" artifacts/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" artifacts/* \
+              --verify-tag \
+              --generate-notes \
+              --title "FixDeepSeaTransfer $GITHUB_REF_NAME"
+          fi
+
