@@ -6,6 +6,8 @@ on:
       - main
     tags:
       - "v*"
+    paths-ignore:
+      - README.md
   pull_request:
   workflow_dispatch:
 
@@ -16,10 +18,22 @@ jobs:
   build:
     runs-on: windows-latest
     timeout-minutes: 45
+    outputs:
+      plugin_version: ${{ steps.plugin_version.outputs.version }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Read plugin version
+        id: plugin_version
+        shell: pwsh
+        run: |
+          $source = Get-Content -Raw 'src/FixDeepSeaTransfer/FixDeepSeaTransfer.cs'
+          if ($source -notmatch '\[Info\("FixDeepSeaTransfer",\s*"[^"]+",\s*"([^"]+)"\)\]') {
+            throw 'Could not read the plugin version from the Info attribute.'
+          }
+          "version=$($Matches[1])" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Configure dependency paths
         shell: pwsh
@@ -71,11 +85,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
         run: |
-          $source = Get-Content -Raw 'src/FixDeepSeaTransfer/FixDeepSeaTransfer.cs'
-          if ($source -notmatch '\[Info\("FixDeepSeaTransfer",\s*"[^"]+",\s*"([^"]+)"\)\]') {
-            throw 'Could not read the plugin version from the Info attribute.'
-          }
-          $pluginVersion = $Matches[1]
+          $pluginVersion = '${{ steps.plugin_version.outputs.version }}'
           $tagVersion = $env:GITHUB_REF_NAME -replace '^v', ''
           if ($pluginVersion -ne $tagVersion) {
             throw "Tag version $tagVersion does not match plugin version $pluginVersion."
@@ -104,6 +114,32 @@ jobs:
           name: FixDeepSeaTransfer-${{ github.sha }}
           path: artifacts/*
           if-no-files-found: error
+
+  tag:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Create version tag if missing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLUGIN_VERSION: ${{ needs.build.outputs.plugin_version }}
+        run: |
+          tag="v$PLUGIN_VERSION"
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists; leaving it unchanged."
+          else
+            gh api "repos/$GITHUB_REPOSITORY/git/refs" \
+              --method POST \
+              -f ref="refs/tags/$tag" \
+              -f sha="$GITHUB_SHA"
+            echo "Created tag $tag at $GITHUB_SHA."
+          fi
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
