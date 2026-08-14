@@ -55,6 +55,7 @@ jobs:
           if ($steamCmdExitCode -ne 0) {
             Write-Warning "SteamCMD returned exit code $steamCmdExitCode after installing the required Rust server files."
           }
+          exit 0
 
       - name: Install Carbon production build
         shell: pwsh
