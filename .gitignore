@@ -1,0 +1,16 @@
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+bin/
+obj/
+artifacts/
+TestResults/
+.ci/
+.jj/
+
