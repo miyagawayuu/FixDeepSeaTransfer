@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
-    <Version>0.1.1</Version>
+    <Version>0.2.0</Version>
     <AssemblyName>FixDeepSeaTransfer</AssemblyName>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
@@ -11,15 +11,17 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
-    <DefineConstants>CARBON</DefineConstants>
+    <ModLoader Condition="'$(ModLoader)' == ''">Carbon</ModLoader>
+    <DefineConstants Condition="'$(ModLoader)' == 'Carbon'">$(DefineConstants);CARBON</DefineConstants>
+    <DefineConstants Condition="'$(ModLoader)' == 'Oxide'">$(DefineConstants);OXIDE</DefineConstants>
     <RustDir Condition="'$(RustDir)' == ''">$(RUSTDIR)</RustDir>
     <ManagedDir>$(RustDir)\RustDedicated_Data\Managed</ManagedDir>
     <CarbonManagedDir>$(RustDir)\carbon\managed</CarbonManagedDir>
+    <OxideManagedDir Condition="'$(OxideManagedDir)' == ''">$(ManagedDir)</OxideManagedDir>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="src\FixDeepSeaTransfer\*.cs" />
-    <Compile Include="local\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -63,20 +65,40 @@
       <HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="Carbon">
+    <Reference Include="Carbon" Condition="'$(ModLoader)' == 'Carbon'">
       <HintPath>$(CarbonManagedDir)\Carbon.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="Carbon.Common">
+    <Reference Include="Carbon.Common" Condition="'$(ModLoader)' == 'Carbon'">
       <HintPath>$(CarbonManagedDir)\Carbon.Common.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="Carbon.Compat">
+    <Reference Include="Carbon.Compat" Condition="'$(ModLoader)' == 'Carbon'">
       <HintPath>$(CarbonManagedDir)\Carbon.Compat.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="Carbon.SDK">
+    <Reference Include="Carbon.SDK" Condition="'$(ModLoader)' == 'Carbon'">
       <HintPath>$(CarbonManagedDir)\Carbon.SDK.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Oxide.Common" Condition="'$(ModLoader)' == 'Oxide'">
+      <HintPath>$(OxideManagedDir)\Oxide.Common.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Oxide.Core" Condition="'$(ModLoader)' == 'Oxide'">
+      <HintPath>$(OxideManagedDir)\Oxide.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Oxide.CSharp" Condition="'$(ModLoader)' == 'Oxide'">
+      <HintPath>$(OxideManagedDir)\Oxide.CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Oxide.Rust" Condition="'$(ModLoader)' == 'Oxide'">
+      <HintPath>$(OxideManagedDir)\Oxide.Rust.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Oxide.Unity" Condition="'$(ModLoader)' == 'Oxide'">
+      <HintPath>$(OxideManagedDir)\Oxide.Unity.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
@@ -87,7 +109,8 @@
 
   <Target Name="ValidateRustReferences" BeforeTargets="ResolveAssemblyReferences" Condition="'$(RustDir)' != ''">
     <Error Condition="!Exists('$(ManagedDir)\Assembly-CSharp.dll')" Text="Rust server assemblies were not found under $(ManagedDir). Install or update Rust Dedicated Server first." />
-    <Error Condition="!Exists('$(CarbonManagedDir)\Carbon.dll')" Text="Carbon assemblies were not found under $(CarbonManagedDir). Install Carbon into the Rust server directory first." />
+    <Error Condition="'$(ModLoader)' == 'Carbon' and !Exists('$(CarbonManagedDir)\Carbon.dll')" Text="Carbon assemblies were not found under $(CarbonManagedDir). Install Carbon into the Rust server directory first." />
+    <Error Condition="'$(ModLoader)' == 'Oxide' and !Exists('$(OxideManagedDir)\Oxide.Rust.dll')" Text="Oxide assemblies were not found under $(OxideManagedDir). Install Oxide into the Rust server directory first." />
+    <Error Condition="'$(ModLoader)' != 'Carbon' and '$(ModLoader)' != 'Oxide'" Text="ModLoader must be either Carbon or Oxide." />
   </Target>
 </Project>
-

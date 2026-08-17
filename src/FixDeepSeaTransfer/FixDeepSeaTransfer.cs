@@ -4,12 +4,12 @@ using HarmonyLib;
 using Oxide.Core.Plugins;
 using UnityEngine;
 
-namespace Carbon.Plugins
+namespace Oxide.Plugins
 {
 
-[Info("FixDeepSeaTransfer", "miyagawayuu", "0.1.1")]
+[Info("FixDeepSeaTransfer", "miyagawayuu", "0.2.0")]
 [Description("Prevents PlayerBoat passengers from being stranded or killed during Deep Sea transfers.")]
-public partial class FixDeepSeaTransfer : CarbonPlugin
+public class FixDeepSeaTransfer : RustPlugin
 {
     private static FixDeepSeaTransfer _instance;
     private readonly Dictionary<ulong, int> _deepSeaTransferPlayerScopes =
@@ -283,4 +283,3 @@ public partial class FixDeepSeaTransfer : CarbonPlugin
     }
 }
 }
-
