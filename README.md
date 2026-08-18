@@ -5,11 +5,12 @@ FixDeepSeaTransfer is a standalone plugin for Rust servers running
 [Oxide](https://github.com/OxideMod/Oxide.Rust). It prevents passengers of a `PlayerBoat` from being
 stranded or killed while the boat transfers into or out of the Deep Sea.
 
-Current version: `0.2.0`
+Current version: `0.3.0`
 
 ## Fixes
 
 - Uses `PlayerBoat.Teleport` when transferring a `PlayerBoat`.
+- Levels the boat while preserving its heading so an already-leaning boat does not arrive capsized.
 - Captures passengers and their boat-relative positions before entering the Deep Sea.
 - Synchronizes every passenger to the boat's destination before Rust dismounts and remounts them.
 - Uses a scoped lightweight dismount during Deep Sea transfers to prevent Rust's

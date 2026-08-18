@@ -7,8 +7,8 @@ using UnityEngine;
 namespace Oxide.Plugins
 {
 
-[Info("FixDeepSeaTransfer", "miyagawayuu", "0.2.0")]
-[Description("Prevents PlayerBoat passengers from being stranded or killed during Deep Sea transfers.")]
+[Info("FixDeepSeaTransfer", "miyagawayuu", "0.3.0")]
+[Description("Prevents PlayerBoat passengers from being stranded, killed, or capsized during Deep Sea transfers.")]
 public class FixDeepSeaTransfer : RustPlugin
 {
     private static FixDeepSeaTransfer _instance;
@@ -148,6 +148,21 @@ public class FixDeepSeaTransfer : RustPlugin
         }
     }
 
+    private static void LevelDeepSeaPlayerBoat(PlayerBoat boat)
+    {
+        if (boat == null || boat.IsDestroyed)
+        {
+            return;
+        }
+
+        // Deep Sea teleportation preserves the vehicle rotation. A boat that is
+        // leaning as it crosses the portal can therefore arrive with the same
+        // roll/pitch and immediately capsize. Preserve its heading while making
+        // it level before PlayerBoat.Teleport clears its physical momentum.
+        var heading = boat.transform.eulerAngles.y;
+        boat.transform.rotation = Quaternion.Euler(0f, heading, 0f);
+    }
+
     private static void RecoverStrandedDeepSeaPassengers(
         DeepSeaVehicleTeleportState state,
         bool shouldBeInsideDeepSea)
@@ -198,6 +213,7 @@ public class FixDeepSeaTransfer : RustPlugin
             }
 
             var state = CaptureDeepSeaVehiclePassengers(boat);
+            LevelDeepSeaPlayerBoat(boat);
             boat.Teleport(position);
             SynchronizeDeepSeaVehiclePassengers(state);
             return false;
